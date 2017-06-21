@@ -11,12 +11,30 @@ public class Player : MonoBehaviour {
 
 	private float currentMomentum = 0f;
 	private float mouseDeltaX = 0f;
-	private float fallStart = 2f;
-	private float fallElapsed = 0f;
 
 	private long playerScore = 0;
 
 	private Vector3 previousMousePosition = Vector3.zero;
+
+	private Rigidbody rigidBody = null;
+
+	public bool HasJumped
+	{
+		get { return hasJumped; }
+		private set { }
+	}
+
+	public float InitialJumpForce
+	{
+		get { return initialJumpForce; }
+		set { initialJumpForce = value; }
+	}
+
+	public float CurrentMomentum
+	{
+		get { return currentMomentum; }
+		set { currentMomentum = value; }
+	}
 
 	public long PlayerScore
 	{
@@ -24,9 +42,10 @@ public class Player : MonoBehaviour {
 		set { playerScore = value; }
 	}
 
+
 	// Use this for initialization
 	void Start () {
-		
+		rigidBody = GetComponent<Rigidbody> ();
 	}
 	
 	// Update is called once per frame
@@ -38,16 +57,9 @@ public class Player : MonoBehaviour {
 		HandleTouchInput ();
 		UpdatePosition ();
 
-		if (hasJumped)
-		{
-			fallElapsed += Time.deltaTime;
-			if (fallElapsed >= fallStart)
-			{
-				//currentMomentum = Mathf.Lerp (currentMomentum, 0f, Time.deltaTime);
-			}
-		}
-
-		Debug.Log ("Current Momentum == " + currentMomentum.ToString ());
+		Vector3 lineStart = transform.position + -transform.up * 10f + -transform.right * 10f;
+		Vector3 lineEnd = transform.position + -transform.up * 10f + transform.right * 10f;
+		Debug.DrawLine (lineStart, lineEnd);
 	}
 
 	void HandleInput() 
@@ -100,11 +112,9 @@ public class Player : MonoBehaviour {
 			if (mouseDeltaX < 0)
 			{
 				transform.position = transform.position + transform.right * mouseDeltaX * Time.deltaTime;
-				//rigidBody.AddForce(-Vector3.right * (initialJumpForce / 2) * Time.deltaTime, ForceMode.Acceleration);
 			} else
 			{
 				transform.position = transform.position + transform.right * mouseDeltaX * Time.deltaTime;
-				//rigidBody.AddForce(Vector3.right * (initialJumpForce / 2) * Time.deltaTime, ForceMode.Acceleration);
 			}
 		}
 
@@ -116,55 +126,23 @@ public class Player : MonoBehaviour {
 
 	void OnCollisionEnter(Collision col)
 	{
-		bool isBottomCollision = false;
-
-		for (int i = 0; i < col.contacts.Length; i++)
+		if (col.collider.tag == Tags.JumpTile)
 		{
-			if (col.contacts [i].point.y > transform.position.y)
-			{
-				isBottomCollision = true;
-				break;
-			}
-		}
-
-		if (isBottomCollision)
-		{
-			Debug.Log ("Bottom Collision Detected");
-			col.collider.enabled = false;
-			currentMomentum = initialJumpForce;
+			JumpTileCollision tileCollision = new JumpTileCollision (col, this, col.collider.GetComponent<JumpTile> ());
+			Messenger<JumpTileCollision>.Broadcast (MessengerEventNames.JumpTileHit, tileCollision, MessengerMode.DONT_REQUIRE_LISTENER);
 		} else
 		{
-			if (col.gameObject.name != "Plane")
-			{
-				currentMomentum = initialJumpForce;
-			} else
-			{
-				hasJumped = false;
-				currentMomentum = 0f;
+			currentMomentum = 0f;
+			hasJumped = false;
 
-				// reset the colliders in editor
-				#if DEBUG && (UNITY_EDITOR || UNITY_EDITOR_OSX)
-				Collider[] colliders = GameObject.FindObjectsOfType<Collider>();
-
-				if(colliders != null && colliders.Length > 0)
-				{
-					foreach (var c in colliders) 
-					{
-						c.enabled = true;
-					}
-				}
-				#endif
+			if (rigidBody != null)
+			{
+				rigidBody.velocity = Vector3.zero;
 			}
-			Debug.Log ("Top Collision Detected");
+
+			transform.position = Vector3.zero;
+			Messenger.Broadcast (GameController.MSG_RESET_GAME, MessengerMode.DONT_REQUIRE_LISTENER);
 		}
 	}
 
-	void OnCollisionExit(Collision col)
-	{
-		if (!col.collider.enabled)
-		{
-			// exiting the block we jumped through, re-enable the collider
-			col.collider.enabled = true;
-		}
-	}
 }

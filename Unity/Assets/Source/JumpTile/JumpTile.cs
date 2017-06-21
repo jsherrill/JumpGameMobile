@@ -13,11 +13,18 @@ public class JumpTile : MonoBehaviour {
 	}
 
 	protected TileType tileType = TileType.REGULAR;
+	protected int tileValue = 10;
 
 	public TileType Type
 	{
 		get { return tileType; }
 		protected set { tileType = value; }
+	}
+
+	public int TileValue
+	{
+		get { return tileValue; }
+		set { tileValue = value; }
 	}
 
 	// Use this for initialization
@@ -32,7 +39,10 @@ public class JumpTile : MonoBehaviour {
 
 	protected virtual void OnCollisionEnter(Collision collision)
 	{
-		Messenger<JumpTile>.Broadcast(MessengerEventNames.JumpTileHit, this, MessengerMode.DONT_REQUIRE_LISTENER);
+		if (collision.collider.tag == Tags.Player)
+		{
+			gameObject.SetActive (false);
+		}
 	}
 
 	protected virtual void OnDestroy() {

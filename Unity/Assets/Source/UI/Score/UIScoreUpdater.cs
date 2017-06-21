@@ -33,18 +33,28 @@ public class UIScoreUpdater : MonoBehaviour {
 	}
 
 	void AddMessageListeners() {
-		Messenger<JumpTile>.AddListener (MessengerEventNames.JumpTileHit, OnJumpTileHit);
+		Messenger.AddListener (GameController.MSG_RESET_GAME, OnResetGame);
+		Messenger<JumpTileCollision>.AddListener (MessengerEventNames.JumpTileHit, OnJumpTileHit);
 	}
 
 	void RemoveMessageListeners() {
-		Messenger<JumpTile>.RemoveListener (MessengerEventNames.JumpTileHit, OnJumpTileHit);
+		Messenger.RemoveListener (GameController.MSG_RESET_GAME, OnResetGame);
+		Messenger<JumpTileCollision>.RemoveListener (MessengerEventNames.JumpTileHit, OnJumpTileHit);
 	}
 
-	void OnJumpTileHit(JumpTile tile)
+	void OnJumpTileHit(JumpTileCollision tileCollision)
 	{
 		if (gameController != null && scoreText != null)
 		{
-			scoreText.text = string.Format ("SCORE: {0}", gameController.PlayerScore().ToString ());
+			scoreText.text = string.Format ("SCORE: {0}", tileCollision.Player.PlayerScore);
+		}
+	}
+
+	void OnResetGame()
+	{
+		if (scoreText != null)
+		{
+			scoreText.text = "SCORE: 0";
 		}
 	}
 }
