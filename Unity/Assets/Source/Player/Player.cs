@@ -42,6 +42,11 @@ public class Player : MonoBehaviour {
 		set { playerScore = value; }
 	}
 
+	public Rigidbody Rigidbody
+	{
+		get { return rigidBody; }
+		set { rigidBody = value; }
+	}
 
 	// Use this for initialization
 	void Start () {
@@ -132,7 +137,6 @@ public class Player : MonoBehaviour {
 			Messenger<JumpTileCollision>.Broadcast (MessengerEventNames.JumpTileHit, tileCollision, MessengerMode.DONT_REQUIRE_LISTENER);
 		} else
 		{
-			Reset ();
 			Messenger.Broadcast (GameController.MSG_RESET_GAME, MessengerMode.DONT_REQUIRE_LISTENER);
 		}
 	}

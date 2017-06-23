@@ -62,11 +62,13 @@ public class UIManager : MonoBehaviour {
 	private void AddMessageListeners()
 	{
 		Messenger<NewHighScore>.AddListener (NewHighScore.MSG_NEW_HIGH_SCORE, OnNewHighScore);
+		Messenger<EndGameEvent>.AddListener (GameController.MSG_END_GAME, OnEndGame);
 	}
 
 	private void RemoveMessageListeners()
 	{
 		Messenger<NewHighScore>.RemoveListener (NewHighScore.MSG_NEW_HIGH_SCORE, OnNewHighScore);
+		Messenger<EndGameEvent>.RemoveListener (GameController.MSG_END_GAME, OnEndGame);
 	}
 
 	private void OnNewHighScore(NewHighScore newScore)
@@ -80,7 +82,22 @@ public class UIManager : MonoBehaviour {
 		if (newScore.IsNewMaxHeight && newMaxHeightLabel != null && maxHeightText != null)
 		{
 			newMaxHeightLabel.SetActive (true);
-			maxHeightText.text = string.Format ("New Max Height: {0}", newScore.Height);
+			maxHeightText.text = string.Format ("New Max Height: {0} Meters", (int)newScore.Height);
+		}
+	}
+
+	private void OnEndGame(EndGameEvent endGame)
+	{
+		if (newHighScoreLabel != null && highScoreText != null)
+		{
+			newHighScoreLabel.SetActive (true);
+			highScoreText.text = string.Format ("Final Score: {0}", endGame.Score);
+		}
+
+		if (newMaxHeightLabel != null && maxHeightText != null)
+		{
+			newMaxHeightLabel.SetActive (true);
+			maxHeightText.text = string.Format ("Final Height: {0} Meters", (int)endGame.Height);
 		}
 	}
 }

@@ -9,6 +9,8 @@ public class JumpTile : MonoBehaviour {
 		REGULAR,
 		SPRING,
 		DOUBLE_SCORE,
+		BRICK,
+		SPIKE,
 		NUM_TYPES
 	}
 
@@ -41,7 +43,10 @@ public class JumpTile : MonoBehaviour {
 	{
 		if (collision.collider.tag == Tags.Player)
 		{
-			gameObject.SetActive (false);
+			if (tileType != TileType.BRICK && tileType != TileType.SPIKE)
+			{
+				gameObject.SetActive (false);
+			}
 		}
 	}
 

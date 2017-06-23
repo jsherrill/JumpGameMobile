@@ -5,6 +5,7 @@ using UnityEngine;
 public class GameController : MonoBehaviour {
 
 	public static readonly string MSG_RESET_GAME = "MSG_RESET_GAME";
+	public static readonly string MSG_END_GAME = "MSG_END_GAME";
 
 	private bool hasGeneratedTiles = false;
 	private float playerMaxHeight = 0f;
@@ -94,7 +95,7 @@ public class GameController : MonoBehaviour {
 			if (player.transform.position.y > playerMaxHeight)
 			{
 				playerMaxHeight = player.transform.position.y;
-				playerFallHeight = playerMaxHeight - 50f;
+				playerFallHeight = playerMaxHeight - 25f;
 			}
 
 			if (player.transform.position.y < playerFallHeight)
@@ -137,10 +138,13 @@ public class GameController : MonoBehaviour {
 		if (isNewHighScore || isNewMaxHeight)
 		{
 			
-			NewHighScore newScore = new NewHighScore(isNewHighScore ? player.PlayerScore : 0,
-													 isNewMaxHeight ? playerMaxHeight : 0f);
+			NewHighScore newScore = new NewHighScore (isNewHighScore ? player.PlayerScore : 0,
+				                        isNewMaxHeight ? playerMaxHeight : 0f);
 			newScore.SaveScores ();
 			Messenger<NewHighScore>.Broadcast (NewHighScore.MSG_NEW_HIGH_SCORE, newScore, MessengerMode.DONT_REQUIRE_LISTENER);
+		} else
+		{
+			Messenger<EndGameEvent>.Broadcast (MSG_END_GAME, new EndGameEvent (player.PlayerScore, playerMaxHeight), MessengerMode.DONT_REQUIRE_LISTENER);
 		}
 	}
 
@@ -171,37 +175,37 @@ public class GameController : MonoBehaviour {
 			}
 		}
 
-		Rigidbody playerRigidBody = tileCollision.Player.GetComponent<Rigidbody> ();
-
-		if (playerRigidBody != null)
+		switch (tileCollision.Tile.Type)
 		{
-			playerRigidBody.velocity = Vector3.zero;
+			case JumpTile.TileType.BRICK:
+				if (!isBottomCollision)
+				{
+					tileCollision.Player.Rigidbody.velocity = Vector3.zero;
+				}
+				tileCollision.Player.CurrentMomentum = isBottomCollision ? 0f : tileCollision.Player.InitialJumpForce * 0.75f;
+				break;
+
+			case JumpTile.TileType.SPIKE:
+				tileCollision.Player.Rigidbody.velocity = Vector3.zero;
+				tileCollision.Player.CurrentMomentum = 0f;
+				ResetGame ();
+				break;
+
+			default:
+				tileCollision.Player.Rigidbody.velocity = Vector3.zero;
+				tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
+				break;
 		}
-
-		tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
-
-//		if (isBottomCollision)
-//		{
-//			tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
-//		} else
-//		{
-//			if (tileCollision.Collision.collider.name != "Plane")
-//			{
-//				tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
-//			} else
-//			{
-//				tileCollision.Player.CurrentMomentum = 0f;
-//			}
-//			Debug.Log ("Top Collision Detected");
-//		}
 	}
 
 	private void ResetGame()
 	{
-		CheckForHighScore ();
+		if (player.HasJumped)
+		{
+			CheckForHighScore ();
+		}
 
 		// reset the colliders in editor
-		#if DEBUG && (UNITY_EDITOR || UNITY_EDITOR_OSX)
 		if(tileGenerator == null || tileGenerator.JumpTiles == null || tileGenerator.JumpTiles.Length == 0)
 			return;
 
@@ -224,6 +228,7 @@ public class GameController : MonoBehaviour {
 		if(player != null)
 		{
 			player.PlayerScore = 0;
+			playerMaxHeight = 0f;
 			player.Reset();
 			playerFallHeight = player.transform.position.y - 10f;
 			player.transform.position = playerStartPosition;
@@ -234,6 +239,5 @@ public class GameController : MonoBehaviour {
 			tileGenerator.Reset();
 			tileGenerator.GenerateTileLayout(player != null ? player.transform.position.y : 0f);
 		}
-		#endif
 	}
 }

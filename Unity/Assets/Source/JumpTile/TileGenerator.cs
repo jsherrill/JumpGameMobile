@@ -96,12 +96,34 @@ public class TileGenerator : MonoBehaviour {
 
 		int tileType = Random.Range (0, 200);
 
+		MeshRenderer tileMesh = tile.GetComponentInChildren<MeshRenderer> ();
+
 		if (tileType == 1)
 		{
 			tile.Type = JumpTile.TileType.DOUBLE_SCORE;
 
-			MeshRenderer tileMesh = tile.GetComponentInChildren<MeshRenderer> ();
 			tileMesh.material.color = Color.blue;
+		}
+
+		if (tilePosition.y > 100f)
+		{
+			if (tileType >= 10 && tileType <= 15)
+			{
+				tile.Type = JumpTile.TileType.BRICK;
+
+				tileMesh.material.color = Color.red;
+			}
+		}
+
+		if (tilePosition.y > 500f)
+		{
+
+			if (tileType >= 30 && tileType <= 40)
+			{
+				tile.Type = JumpTile.TileType.SPIKE;
+
+				tileMesh.material.color = Color.black;
+			}
 		}
 	}
 
@@ -111,11 +133,19 @@ public class TileGenerator : MonoBehaviour {
 
 		if (jumpTiles != null && jumpTiles.Length > 0)
 		{
+			MeshRenderer tileMesh = null;
 			for (int i = 0; i < jumpTiles.Length; i++)
 			{
 				// disable the gameobject so GenerateTileLayout will select it as useable
 				jumpTiles[i].gameObject.SetActive(false);
-				jumpTiles [i].transform.position = Vector3.zero;			
+				jumpTiles [i].transform.position = Vector3.zero;
+				jumpTiles [i].Type = JumpTile.TileType.REGULAR;
+
+				tileMesh = jumpTiles [i].GetComponent<MeshRenderer> ();
+				if (tileMesh != null)
+				{
+					tileMesh.material.color = Color.white;
+				}
 			}
 		}
 	}
