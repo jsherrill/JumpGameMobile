@@ -7,12 +7,20 @@ public class GameController : MonoBehaviour {
 	public static readonly string MSG_RESET_GAME = "MSG_RESET_GAME";
 
 	private bool hasGeneratedTiles = false;
+	private float playerMaxHeight = 0f;
+	private float playerFallHeight = 0f;
+	private Vector3 playerStartPosition = Vector3.zero;
 	Player player = null;
 	TileGenerator tileGenerator = null;
 
 	public Player Player()
 	{
 		return player;
+	}
+
+	public float PlayerMaxHeight()
+	{
+		return playerMaxHeight;
 	}
 
 	// Use this for initialization
@@ -34,6 +42,11 @@ public class GameController : MonoBehaviour {
 			}
 		}
 
+		if (player)
+		{
+			playerStartPosition = player.transform.position;
+		}
+
 		tileGenerator = GetComponent<TileGenerator> ();
 
 		if (tileGenerator == null)
@@ -46,6 +59,10 @@ public class GameController : MonoBehaviour {
 		{
 			tileGenerator.GenerateTileLayout (float.MaxValue);
 		}
+
+		#if UNITY_EDITOR || UNITY_EDITOR_OSX || UNITY_EDITOR_64
+		PlayerPrefs.DeleteAll();
+		#endif
 	}
 
 	void OnDestroy() {
@@ -73,6 +90,18 @@ public class GameController : MonoBehaviour {
 			{
 				tileGenerator.RecycleTiles (player.transform.position.y - 10f);
 			}
+
+			if (player.transform.position.y > playerMaxHeight)
+			{
+				playerMaxHeight = player.transform.position.y;
+				playerFallHeight = playerMaxHeight - 50f;
+			}
+
+			if (player.transform.position.y < playerFallHeight)
+			{
+				Debug.Log ("Player has fallen below the line!! They lose.");
+				ResetGame ();
+			}
 		}
 	}
 
@@ -91,6 +120,28 @@ public class GameController : MonoBehaviour {
 	public long PlayerScore()
 	{
 		return player != null ? player.PlayerScore : 0;
+	}
+
+	private void CheckForHighScore()
+	{
+		long highScore = (long)PlayerPrefs.GetInt ("HighScore", -1);
+		float maxHeight = PlayerPrefs.GetFloat ("MaxHeight", -1);
+
+
+		bool isNewHighScore = false;
+		bool isNewMaxHeight = false;
+
+		isNewHighScore = highScore == -1 || player.PlayerScore > highScore;
+		isNewMaxHeight = maxHeight == -1 || playerMaxHeight > maxHeight;
+
+		if (isNewHighScore || isNewMaxHeight)
+		{
+			
+			NewHighScore newScore = new NewHighScore(isNewHighScore ? player.PlayerScore : 0,
+													 isNewMaxHeight ? playerMaxHeight : 0f);
+			newScore.SaveScores ();
+			Messenger<NewHighScore>.Broadcast (NewHighScore.MSG_NEW_HIGH_SCORE, newScore, MessengerMode.DONT_REQUIRE_LISTENER);
+		}
 	}
 
 	private void OnJumpTileHit(JumpTileCollision tileCollision)
@@ -147,6 +198,8 @@ public class GameController : MonoBehaviour {
 
 	private void ResetGame()
 	{
+		CheckForHighScore ();
+
 		// reset the colliders in editor
 		#if DEBUG && (UNITY_EDITOR || UNITY_EDITOR_OSX)
 		if(tileGenerator == null || tileGenerator.JumpTiles == null || tileGenerator.JumpTiles.Length == 0)
@@ -171,6 +224,15 @@ public class GameController : MonoBehaviour {
 		if(player != null)
 		{
 			player.PlayerScore = 0;
+			player.Reset();
+			playerFallHeight = player.transform.position.y - 10f;
+			player.transform.position = playerStartPosition;
+		}
+
+		if(tileGenerator != null)
+		{
+			tileGenerator.Reset();
+			tileGenerator.GenerateTileLayout(player != null ? player.transform.position.y : 0f);
 		}
 		#endif
 	}

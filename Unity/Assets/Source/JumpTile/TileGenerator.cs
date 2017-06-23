@@ -55,7 +55,7 @@ public class TileGenerator : MonoBehaviour {
 
 		for (int i = 0; i < jumpTiles.Length; i++)
 		{
-			if (jumpTiles [i].transform.position.y < playerHeight)
+			if (jumpTiles [i].transform.position.y < playerHeight - 50f)
 			{
 				useableTiles.Add (jumpTiles [i]);
 			} else if (!jumpTiles [i].gameObject.activeSelf)
@@ -93,5 +93,30 @@ public class TileGenerator : MonoBehaviour {
 		Collider tileCollider = tile.GetComponent<Collider> ();
 		if (tileCollider != null && !tileCollider.enabled)
 			tileCollider.enabled = true;
+
+		int tileType = Random.Range (0, 200);
+
+		if (tileType == 1)
+		{
+			tile.Type = JumpTile.TileType.DOUBLE_SCORE;
+
+			MeshRenderer tileMesh = tile.GetComponentInChildren<MeshRenderer> ();
+			tileMesh.material.color = Color.blue;
+		}
+	}
+
+	public void Reset()
+	{
+		lastTileY = 0f;
+
+		if (jumpTiles != null && jumpTiles.Length > 0)
+		{
+			for (int i = 0; i < jumpTiles.Length; i++)
+			{
+				// disable the gameobject so GenerateTileLayout will select it as useable
+				jumpTiles[i].gameObject.SetActive(false);
+				jumpTiles [i].transform.position = Vector3.zero;			
+			}
+		}
 	}
 }

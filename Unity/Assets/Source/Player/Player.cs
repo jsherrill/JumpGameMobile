@@ -132,17 +132,21 @@ public class Player : MonoBehaviour {
 			Messenger<JumpTileCollision>.Broadcast (MessengerEventNames.JumpTileHit, tileCollision, MessengerMode.DONT_REQUIRE_LISTENER);
 		} else
 		{
-			currentMomentum = 0f;
-			hasJumped = false;
-
-			if (rigidBody != null)
-			{
-				rigidBody.velocity = Vector3.zero;
-			}
-
-			transform.position = Vector3.zero;
+			Reset ();
 			Messenger.Broadcast (GameController.MSG_RESET_GAME, MessengerMode.DONT_REQUIRE_LISTENER);
 		}
 	}
 
+	public void Reset()
+	{
+		currentMomentum = 0f;
+		hasJumped = false;
+
+		if (rigidBody != null)
+		{
+			rigidBody.velocity = Vector3.zero;
+		}
+
+		transform.position = Vector3.zero;
+	}
 }

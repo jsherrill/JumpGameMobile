@@ -18,7 +18,7 @@ public class JumpTile : MonoBehaviour {
 	public TileType Type
 	{
 		get { return tileType; }
-		protected set { tileType = value; }
+		set { tileType = value; }
 	}
 
 	public int TileValue
