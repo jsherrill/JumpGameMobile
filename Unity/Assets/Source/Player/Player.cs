@@ -18,6 +18,10 @@ public class Player : MonoBehaviour {
 
 	private Rigidbody rigidBody = null;
 
+	private List<PlayerEffect> playerEffects = new List<PlayerEffect>();
+
+	private MeshRenderer meshRenderer = null;
+
 	public bool HasJumped
 	{
 		get { return hasJumped; }
@@ -48,9 +52,17 @@ public class Player : MonoBehaviour {
 		set { rigidBody = value; }
 	}
 
+	public List<PlayerEffect> PlayerEffects
+	{
+		get { return playerEffects; }
+		private set { playerEffects = value; }
+	}
+
 	// Use this for initialization
 	void Start () {
 		rigidBody = GetComponent<Rigidbody> ();
+
+		meshRenderer = GetComponent<MeshRenderer> ();
 	}
 	
 	// Update is called once per frame
@@ -60,6 +72,7 @@ public class Player : MonoBehaviour {
 		#endif
 
 		HandleTouchInput ();
+		UpdatePlayerEffects ();
 		UpdatePosition ();
 
 		Vector3 lineStart = transform.position + -transform.up * 10f + -transform.right * 10f;
@@ -109,7 +122,6 @@ public class Player : MonoBehaviour {
 		}
 	}
 
-
 	void UpdatePosition()
 	{
 		if (mouseDeltaX != 0f)
@@ -127,6 +139,45 @@ public class Player : MonoBehaviour {
 		{
 			transform.position += transform.up * currentMomentum * Time.deltaTime;
 		}
+	}
+
+	void UpdatePlayerEffects()
+	{
+		if (playerEffects == null || playerEffects.Count == 0)
+		{
+			if (meshRenderer != null)
+			{
+				meshRenderer.material.color = Color.white;
+			}
+			return;
+		}
+
+		for (int i = 0; i < playerEffects.Count; i++)
+		{
+			playerEffects [i].Update ();
+
+			// duration effects will remove them
+			if (i >= playerEffects.Count)
+				break;
+
+			if (playerEffects [i].Type == PlayerEffect.EffectType.SHIELD)
+			{
+				if (meshRenderer != null)
+				{
+					meshRenderer.material.color = Color.cyan;
+				}
+			}
+
+			if (playerEffects [i].Type == PlayerEffect.EffectType.SHIELD)
+			{
+				if (meshRenderer != null)
+				{
+					meshRenderer.material.color = Color.magenta;
+				}
+			}
+		}
+
+		playerEffects.RemoveAll (e => e.IsExpired);
 	}
 
 	void OnCollisionEnter(Collision col)
@@ -152,5 +203,18 @@ public class Player : MonoBehaviour {
 		}
 
 		transform.position = Vector3.zero;
+
+		if (playerEffects != null && playerEffects.Count > 0)
+		{
+			playerEffects.Clear ();
+		}
+	}
+
+	public void AddPlayerEffect(PlayerEffect effect)
+	{
+		if (effect == null || playerEffects == null)
+			return;
+
+		playerEffects.Add (effect);
 	}
 }

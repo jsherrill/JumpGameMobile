@@ -89,13 +89,13 @@ public class GameController : MonoBehaviour {
 
 			if (tileGenerator != null)
 			{
-				tileGenerator.RecycleTiles (player.transform.position.y - 10f);
+				tileGenerator.RecycleTiles (player.transform.position.y - 100f);
 			}
 
 			if (player.transform.position.y > playerMaxHeight)
 			{
 				playerMaxHeight = player.transform.position.y;
-				playerFallHeight = playerMaxHeight - 25f;
+				playerFallHeight = playerMaxHeight - 35f;
 			}
 
 			if (player.transform.position.y < playerFallHeight)
@@ -148,6 +148,59 @@ public class GameController : MonoBehaviour {
 		}
 	}
 
+	private IEnumerator CheckForHighScoreWWW()
+	{
+		long score = player.PlayerScore;
+		float height = Mathf.Floor(playerMaxHeight);
+
+		WWWForm requestData = new WWWForm ();
+		requestData.AddField ("score", score.ToString());
+		requestData.AddField ("height", height.ToString());
+		requestData.AddField ("initials", "ZZZ");
+
+		//string dbURL = "http://10.0.0.10:1337/connect";
+		string dbURL = "http://71.229.150.150:1337/score";
+		WWW request = new WWW (dbURL, requestData);
+
+		yield return new WaitUntil (() => request.isDone);
+
+		if (request.error == null)
+		{
+			if (!string.IsNullOrEmpty (request.text))
+			{
+				string[] responseParams = request.text.Split(':');
+
+				if (responseParams.Length == 3)
+				{
+					if (responseParams[0] == "0")
+					{
+						int highScoreRank = System.Convert.ToInt32 (responseParams [1]);
+						int heightRank = System.Convert.ToInt32 (responseParams [2]);
+
+						bool isNewHighScore = highScoreRank != -1;
+						bool isNewMaxHeight = heightRank != -1;
+
+						if (isNewHighScore || isNewMaxHeight)
+						{
+							NewHighScore newScore = new NewHighScore (isNewHighScore ? score : 0,
+								isNewMaxHeight ? height : 0f);
+							newScore.SaveScores ();
+							Messenger<NewHighScore>.Broadcast (NewHighScore.MSG_NEW_HIGH_SCORE, newScore, MessengerMode.DONT_REQUIRE_LISTENER);
+						} else
+						{
+							Messenger<EndGameEvent>.Broadcast (MSG_END_GAME, new EndGameEvent (player.PlayerScore, playerMaxHeight), MessengerMode.DONT_REQUIRE_LISTENER);
+						}
+					}
+				}
+			}
+		} else
+		{
+			Debug.Log (request.error);
+			Messenger<EndGameEvent>.Broadcast (MSG_END_GAME, new EndGameEvent (score, height), MessengerMode.DONT_REQUIRE_LISTENER);
+		}
+	}
+
+
 	private void OnJumpTileHit(JumpTileCollision tileCollision)
 	{
 		if (player == null)
@@ -186,9 +239,27 @@ public class GameController : MonoBehaviour {
 				break;
 
 			case JumpTile.TileType.SPIKE:
-				tileCollision.Player.Rigidbody.velocity = Vector3.zero;
-				tileCollision.Player.CurrentMomentum = 0f;
-				ResetGame ();
+				{
+					PlayerEffect shieldEffect = null;
+
+					if (player.PlayerEffects != null && player.PlayerEffects.Count > 0)
+					{
+						shieldEffect = player.PlayerEffects.Find (e => e.Type == PlayerEffect.EffectType.SHIELD);
+					}
+
+					// shield effect protects the player from the effects of the spike tile
+					if (shieldEffect != null)
+					{
+						tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
+						player.PlayerEffects.Remove (shieldEffect);
+					} else
+					{
+						// spike tiles instantly kill the player
+						tileCollision.Player.CurrentMomentum = 0f;
+						ResetGame ();
+					}
+					tileCollision.Player.Rigidbody.velocity = Vector3.zero;
+				}
 				break;
 
 			default:
@@ -202,7 +273,8 @@ public class GameController : MonoBehaviour {
 	{
 		if (player.HasJumped)
 		{
-			CheckForHighScore ();
+			StartCoroutine(CheckForHighScoreWWW ());
+			//CheckForHighScore ();
 		}
 
 		// reset the colliders in editor

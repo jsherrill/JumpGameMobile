@@ -55,7 +55,7 @@ public class TileGenerator : MonoBehaviour {
 
 		for (int i = 0; i < jumpTiles.Length; i++)
 		{
-			if (jumpTiles [i].transform.position.y < playerHeight - 50f)
+			if (jumpTiles [i].transform.position.y < playerHeight - 100f)
 			{
 				useableTiles.Add (jumpTiles [i]);
 			} else if (!jumpTiles [i].gameObject.activeSelf)
@@ -94,7 +94,7 @@ public class TileGenerator : MonoBehaviour {
 		if (tileCollider != null && !tileCollider.enabled)
 			tileCollider.enabled = true;
 
-		int tileType = Random.Range (0, 200);
+		int tileType = Random.Range (0, 201);
 
 		MeshRenderer tileMesh = tile.GetComponentInChildren<MeshRenderer> ();
 
@@ -107,6 +107,7 @@ public class TileGenerator : MonoBehaviour {
 
 		if (tilePosition.y > 100f)
 		{
+			// brick
 			if (tileType >= 10 && tileType <= 15)
 			{
 				tile.Type = JumpTile.TileType.BRICK;
@@ -117,12 +118,30 @@ public class TileGenerator : MonoBehaviour {
 
 		if (tilePosition.y > 500f)
 		{
-
-			if (tileType >= 30 && tileType <= 40)
+			// spike
+			if (tileType == 200)
 			{
 				tile.Type = JumpTile.TileType.SPIKE;
 
 				tileMesh.material.color = Color.black;
+			}
+
+			// shield
+			if (tileType >= 50 && tileType <= 55)
+			{
+				tile.Type = JumpTile.TileType.SHIELD;
+
+				tileMesh.material.color = Color.cyan;
+			}
+		}
+
+		if (tilePosition.y > 1000f)
+		{
+			if (tileType == 200)
+			{
+				tile.Type = JumpTile.TileType.ROCKET;
+
+				tileMesh.material.color = Color.magenta;
 			}
 		}
 	}
