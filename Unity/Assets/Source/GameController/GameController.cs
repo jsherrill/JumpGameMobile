@@ -6,6 +6,7 @@ public class GameController : MonoBehaviour {
 
 	public static readonly string MSG_RESET_GAME = "MSG_RESET_GAME";
 	public static readonly string MSG_END_GAME = "MSG_END_GAME";
+	public static bool isPaused = false;
 
 	private bool hasGeneratedTiles = false;
 	private float playerMaxHeight = 0f;
@@ -13,6 +14,9 @@ public class GameController : MonoBehaviour {
 	private Vector3 playerStartPosition = Vector3.zero;
 	Player player = null;
 	TileGenerator tileGenerator = null;
+
+	[SerializeField]
+	Transform particleContainer = null;
 
 	public Player Player()
 	{
@@ -23,7 +27,7 @@ public class GameController : MonoBehaviour {
 	{
 		return playerMaxHeight;
 	}
-
+		
 	// Use this for initialization
 	void Start () {
 		AddMessageHandlers ();
@@ -64,6 +68,10 @@ public class GameController : MonoBehaviour {
 		#if UNITY_EDITOR || UNITY_EDITOR_OSX || UNITY_EDITOR_64
 		PlayerPrefs.DeleteAll();
 		#endif
+
+		DisableParticles ();
+
+		StartCoroutine (GetHighScoresWWW ());
 	}
 
 	void OnDestroy() {
@@ -72,6 +80,9 @@ public class GameController : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
+		if (isPaused)
+			return;
+		
 		if (player != null)
 		{
 			if ((int)player.transform.position.y % 50 == 0 && player.HasJumped)
@@ -104,6 +115,55 @@ public class GameController : MonoBehaviour {
 				ResetGame ();
 			}
 		}
+	}
+
+	void OnApplicationFocus(bool hasFocus)
+	{
+		if (hasFocus && isPaused)
+		{
+			StartCoroutine (UnpauseRoutine());
+		} else
+		{
+			isPaused = !hasFocus;
+		}
+	}
+
+	void OnApplicationPause(bool pauseStatus)
+	{
+		if (!pauseStatus && isPaused)
+		{
+			StartCoroutine (UnpauseRoutine());
+		} else
+		{
+			isPaused = pauseStatus;
+		}
+	}
+
+	public void SetPause(bool pauseStatus)
+	{
+		OnApplicationPause (pauseStatus);
+	}
+
+	private IEnumerator UnpauseRoutine()
+	{
+		Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, "Get Ready!", MessengerMode.DONT_REQUIRE_LISTENER);
+
+		yield return new WaitForSeconds (0.5f);
+
+		int ticks = 3;
+
+		for (int i = ticks; i > 0; i--)
+		{
+			Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, string.Format ("{0}...", i), MessengerMode.DONT_REQUIRE_LISTENER);
+			yield return new WaitForSeconds (0.5f);
+		}
+
+		Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, "GO!", MessengerMode.DONT_REQUIRE_LISTENER);
+
+		yield return new WaitForSeconds (0.25f);
+
+		Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, string.Empty, MessengerMode.DONT_REQUIRE_LISTENER);
+		isPaused = false;
 	}
 
 	private void AddMessageHandlers()
@@ -153,6 +213,16 @@ public class GameController : MonoBehaviour {
 		long score = player.PlayerScore;
 		float height = Mathf.Floor(playerMaxHeight);
 
+		var networkReachability = Application.internetReachability;
+		var networkConnectionStatus = Network.TestConnection ();
+
+		if (networkReachability == NetworkReachability.NotReachable || networkConnectionStatus == ConnectionTesterStatus.Error ||
+			networkConnectionStatus == ConnectionTesterStatus.Undetermined)
+		{
+			Messenger<EndGameEvent>.Broadcast (MSG_END_GAME, new EndGameEvent (score, height), MessengerMode.DONT_REQUIRE_LISTENER);
+			yield break;
+		}
+
 		WWWForm requestData = new WWWForm ();
 		requestData.AddField ("score", score.ToString());
 		requestData.AddField ("height", height.ToString());
@@ -160,6 +230,7 @@ public class GameController : MonoBehaviour {
 
 		//string dbURL = "http://10.0.0.10:1337/connect";
 		string dbURL = "http://71.229.150.150:1337/score";
+
 		WWW request = new WWW (dbURL, requestData);
 
 		yield return new WaitUntil (() => request.isDone);
@@ -200,6 +271,78 @@ public class GameController : MonoBehaviour {
 		}
 	}
 
+	private IEnumerator GetHighScoresWWW()
+	{
+		string scoreURL = "http://71.229.150.150:1337/requestScores";
+		string heightURL = "http://71.229.150.150:1337/requestHeights";
+
+		WWW scoreRequest = new WWW (scoreURL);
+		WWW heightRequest = new WWW (heightURL);
+
+		Handheld.StartActivityIndicator ();
+
+		yield return new WaitUntil (() => scoreRequest.isDone && heightRequest.isDone);
+
+		Handheld.StopActivityIndicator();
+
+		if (string.IsNullOrEmpty(scoreRequest.error))
+		{
+			if (!string.IsNullOrEmpty (scoreRequest.text))
+			{
+				ParseScoreData (scoreRequest.text, ScoreEntry.ScoreType.HIGH_SCORE);
+
+				UIManager uiManager = GameObject.FindObjectOfType<UIManager> ();
+
+				if (uiManager != null)
+				{
+					uiManager.PopulateHighScores ();
+				}
+			}
+		} else
+		{
+			Debug.Log (scoreRequest.error);
+		}
+
+		if (string.IsNullOrEmpty (heightRequest.error))
+		{
+			if (!string.IsNullOrEmpty (heightRequest.text))
+			{
+				ParseScoreData (heightRequest.text, ScoreEntry.ScoreType.MAX_HEIGHT);
+			}
+		} else
+		{
+			Debug.Log (heightRequest.error);
+		}
+	}
+
+	private void ParseScoreData(string data, ScoreEntry.ScoreType scoreType)
+	{
+		if (string.IsNullOrEmpty (data))
+			return;
+
+		HighScoreTable scoreTable = GameObject.FindObjectOfType<HighScoreTable> ();
+
+		if (scoreTable == null)
+			return;
+
+		string[] scoreData = data.Split ('&');
+		string[] entryData;
+
+		if (scoreData != null && scoreData.Length > 0)
+		{
+			for (int i = 0; i < scoreData.Length; i++)
+			{
+				entryData = scoreData [i].Split (':');
+
+				if (entryData.Length == 2)
+				{
+					Debug.Log (string.Format ("{0}: {1} - {2}", i, entryData [0], entryData [1]));
+					ScoreEntry score = new ScoreEntry ((long)System.Convert.ToDouble (entryData [1]), entryData [0], scoreType);
+					scoreTable.AddScoreEntry (score);
+				}
+			}
+		}
+	}
 
 	private void OnJumpTileHit(JumpTileCollision tileCollision)
 	{
@@ -252,6 +395,7 @@ public class GameController : MonoBehaviour {
 					{
 						tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
 						player.PlayerEffects.Remove (shieldEffect);
+						tileCollision.Collision.collider.enabled = false;
 					} else
 					{
 						// spike tiles instantly kill the player
@@ -262,9 +406,14 @@ public class GameController : MonoBehaviour {
 				}
 				break;
 
+			case JumpTile.TileType.ROCKET:
+				tileCollision.Player.Rigidbody.velocity = Vector3.zero;
+				break;
+
 			default:
 				tileCollision.Player.Rigidbody.velocity = Vector3.zero;
 				tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
+				EnableRegularParticleEffect (tileCollision.Tile.transform.position);
 				break;
 		}
 	}
@@ -310,6 +459,42 @@ public class GameController : MonoBehaviour {
 		{
 			tileGenerator.Reset();
 			tileGenerator.GenerateTileLayout(player != null ? player.transform.position.y : 0f);
+		}
+	}
+
+	void DisableParticles()
+	{
+		if (particleContainer != null && particleContainer.childCount > 0)
+		{
+			ParticleSystem particles;
+			for (int i = 0; i < particleContainer.childCount; i++)
+			{
+				particles = particleContainer.GetChild (i).GetComponent<ParticleSystem> ();
+
+				if (particles != null)
+				{
+					particles.Stop ();
+				}
+			}
+		}
+	}
+
+	void EnableRegularParticleEffect(Vector3 position)
+	{
+		if (particleContainer != null && particleContainer.childCount > 0)
+		{
+			ParticleSystem particles;
+			for (int i = 0; i < particleContainer.childCount; i++)
+			{
+				particles = particleContainer.GetChild (i).GetComponent<ParticleSystem> ();
+
+				if (particles != null && !particles.isPlaying)
+				{
+					particles.transform.position = position;
+					particles.Play ();
+					break;
+				}
+			}
 		}
 	}
 }

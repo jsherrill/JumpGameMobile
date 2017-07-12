@@ -16,8 +16,18 @@ public class JumpTile : MonoBehaviour {
 		NUM_TYPES
 	}
 
-	protected TileType tileType = TileType.REGULAR;
+	public enum MovementStyle
+	{
+		NONE,
+		VERTICAL,
+		HORIZONTAL
+	}
+
 	protected int tileValue = 10;
+	protected float moveMagnitude = 0.25f;
+	protected Vector3 moveAxes = Vector3.zero;
+	protected TileType tileType = TileType.REGULAR;
+	protected MovementStyle movementStyle = MovementStyle.NONE;
 
 	public TileType Type
 	{
@@ -31,14 +41,67 @@ public class JumpTile : MonoBehaviour {
 		set { tileValue = value; }
 	}
 
+	public float MoveMagnitude
+	{
+		get { return moveMagnitude; }
+		set { moveMagnitude = value; }
+	}
+
+	public Vector3 MoveAxes
+	{
+		get { return moveAxes; }
+		protected set { moveAxes = value; }
+	}
+
+	public MovementStyle MoveStyle
+	{
+		get { return movementStyle; }
+		set 
+		{ 
+			movementStyle = value;
+
+			switch (movementStyle)
+			{
+				case MovementStyle.HORIZONTAL:
+					moveAxes = new Vector3 (1f, 0f, 0f);
+					break;
+
+				case MovementStyle.VERTICAL:
+					moveAxes = new Vector3 (0f, 1f, 0f);
+					break;
+
+				case MovementStyle.NONE:
+					moveAxes = Vector3.zero;
+					break;
+			}
+		}
+	}
+
 	// Use this for initialization
 	protected virtual void Start () {
+		movementStyle = MovementStyle.VERTICAL;
+		if (movementStyle != MovementStyle.NONE)
+		{
+			if (movementStyle == MovementStyle.HORIZONTAL)
+			{
+				moveAxes = new Vector3 (1f, 0f, 0f);
+			} else if (movementStyle == MovementStyle.VERTICAL)
+			{
+				moveAxes = new Vector3 (0f, 1f, 0f);
+			}
+
+			moveAxes.Normalize ();
+		}
+
 		AddMessageHandlers ();
 	}
 	
 	// Update is called once per frame
 	protected virtual void Update () {
-		
+		if (movementStyle != MovementStyle.NONE)
+		{
+			transform.position += moveAxes * Mathf.Sin(Time.time) * moveMagnitude;
+		}
 	}
 
 	protected virtual void OnCollisionEnter(Collision collision)
@@ -59,6 +122,7 @@ public class JumpTile : MonoBehaviour {
 							player.AddPlayerEffect (new ShieldEffect (0f, player));
 						}
 					}
+					gameObject.SetActive (false);
 					break;
 
 				case TileType.ROCKET:
@@ -75,6 +139,14 @@ public class JumpTile : MonoBehaviour {
 					break;
 
 				case TileType.BRICK:
+					for (int i = 0; i < collision.contacts.Length; i++)
+					{
+						if (collision.contacts [i].point.y > transform.position.y)
+						{
+							gameObject.SetActive (false);
+							break;
+						}
+					}
 					return;
 
 				case TileType.SPIKE:

@@ -23,7 +23,7 @@ public class CameraSkyboxRotate : MonoBehaviour {
 	{
 		if (gameController != null)
 		{
-			float rot = gameController.Player ().CurrentMomentum * 0.25f;
+			float rot = -gameController.Player ().CurrentMomentum * 0.25f;
 			cameraTransform.Rotate (cameraTransform.right, rot * Time.deltaTime);
 		}
 	}

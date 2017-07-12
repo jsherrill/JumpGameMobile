@@ -97,12 +97,14 @@ public class TileGenerator : MonoBehaviour {
 		int tileType = Random.Range (0, 201);
 
 		MeshRenderer tileMesh = tile.GetComponentInChildren<MeshRenderer> ();
+		bool isSpecialTile = false;
 
 		if (tileType == 1)
 		{
 			tile.Type = JumpTile.TileType.DOUBLE_SCORE;
-
+			tile.MoveStyle = JumpTile.MovementStyle.HORIZONTAL;
 			tileMesh.material.color = Color.blue;
+			isSpecialTile = true;
 		}
 
 		if (tilePosition.y > 100f)
@@ -113,6 +115,7 @@ public class TileGenerator : MonoBehaviour {
 				tile.Type = JumpTile.TileType.BRICK;
 
 				tileMesh.material.color = Color.red;
+				isSpecialTile = true;
 			}
 		}
 
@@ -124,6 +127,7 @@ public class TileGenerator : MonoBehaviour {
 				tile.Type = JumpTile.TileType.SPIKE;
 
 				tileMesh.material.color = Color.black;
+				isSpecialTile = true;
 			}
 
 			// shield
@@ -132,17 +136,26 @@ public class TileGenerator : MonoBehaviour {
 				tile.Type = JumpTile.TileType.SHIELD;
 
 				tileMesh.material.color = Color.cyan;
+				isSpecialTile = true;
 			}
 		}
 
 		if (tilePosition.y > 1000f)
 		{
-			if (tileType == 200)
+			if (tileType == 150)
 			{
 				tile.Type = JumpTile.TileType.ROCKET;
 
 				tileMesh.material.color = Color.magenta;
+				isSpecialTile = true;
 			}
+		}
+
+		if (!isSpecialTile)
+		{
+			tile.MoveStyle = JumpTile.MovementStyle.NONE;
+			tile.Type = JumpTile.TileType.REGULAR;
+			tileMesh.material.color = Color.white;
 		}
 	}
 
@@ -159,6 +172,7 @@ public class TileGenerator : MonoBehaviour {
 				jumpTiles[i].gameObject.SetActive(false);
 				jumpTiles [i].transform.position = Vector3.zero;
 				jumpTiles [i].Type = JumpTile.TileType.REGULAR;
+				jumpTiles [i].MoveStyle = JumpTile.MovementStyle.NONE;
 
 				tileMesh = jumpTiles [i].GetComponent<MeshRenderer> ();
 				if (tileMesh != null)

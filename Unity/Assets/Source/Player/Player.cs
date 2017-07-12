@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class Player : MonoBehaviour {
 
@@ -9,6 +10,7 @@ public class Player : MonoBehaviour {
 	[SerializeField]
 	private float initialJumpForce = 10f;
 
+	private float lastMomentum = 0f;
 	private float currentMomentum = 0f;
 	private float mouseDeltaX = 0f;
 
@@ -67,6 +69,27 @@ public class Player : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+		if (GameController.isPaused)
+		{
+			rigidBody.Sleep ();
+
+			if (lastMomentum == 0f)
+			{
+				lastMomentum = currentMomentum;
+				currentMomentum = 0f;
+				mouseDeltaX = 0f;
+				previousMousePosition = Vector3.zero;
+			}
+			return;
+		} else
+		{
+			if (lastMomentum != 0f)
+			{
+				currentMomentum = lastMomentum;
+				lastMomentum = 0f;
+			}
+		}
+
 		#if UNITY_EDITOR || UNITY_EDITOR_OSX
 		//HandleInput ();
 		#endif
@@ -109,6 +132,12 @@ public class Player : MonoBehaviour {
 
 				if (touch.phase == TouchPhase.Began && !hasJumped)
 				{
+					if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject (touch.fingerId))
+					{
+						Debug.Log ("Touch is over UI");
+						continue;
+					}
+
 					currentMomentum = initialJumpForce;
 					hasJumped = true;
 				} else if (touch.phase == TouchPhase.Moved)
