@@ -22,7 +22,7 @@ public class Player : MonoBehaviour {
 
 	private List<PlayerEffect> playerEffects = new List<PlayerEffect>();
 
-	private MeshRenderer meshRenderer = null;
+	private SkinnedMeshRenderer meshRenderer = null;
 
 	public bool HasJumped
 	{
@@ -64,7 +64,7 @@ public class Player : MonoBehaviour {
 	void Start () {
 		rigidBody = GetComponent<Rigidbody> ();
 
-		meshRenderer = GetComponent<MeshRenderer> ();
+		meshRenderer = GetComponentInChildren<SkinnedMeshRenderer> ();
 	}
 	
 	// Update is called once per frame
@@ -97,10 +97,6 @@ public class Player : MonoBehaviour {
 		HandleTouchInput ();
 		UpdatePlayerEffects ();
 		UpdatePosition ();
-
-		Vector3 lineStart = transform.position + -transform.up * 10f + -transform.right * 10f;
-		Vector3 lineEnd = transform.position + -transform.up * 10f + transform.right * 10f;
-		Debug.DrawLine (lineStart, lineEnd);
 	}
 
 	void HandleInput() 
@@ -132,14 +128,16 @@ public class Player : MonoBehaviour {
 
 				if (touch.phase == TouchPhase.Began && !hasJumped)
 				{
+					// don't jump if the user is clicking a UI item
 					if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject (touch.fingerId))
 					{
-						Debug.Log ("Touch is over UI");
 						continue;
 					}
 
 					currentMomentum = initialJumpForce;
 					hasJumped = true;
+
+					Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, string.Empty, MessengerMode.DONT_REQUIRE_LISTENER);
 				} else if (touch.phase == TouchPhase.Moved)
 				{
 					mouseDeltaX = touch.deltaPosition.x;
@@ -155,14 +153,14 @@ public class Player : MonoBehaviour {
 	{
 		if (mouseDeltaX != 0f)
 		{
-			if (mouseDeltaX < 0)
-			{
-				transform.position = transform.position + transform.right * mouseDeltaX * Time.deltaTime;
-			} else
-			{
-				transform.position = transform.position + transform.right * mouseDeltaX * Time.deltaTime;
-			}
+			transform.position = transform.position + transform.right * mouseDeltaX * Time.deltaTime;
+
+			meshRenderer.transform.Rotate (Vector3.forward, -mouseDeltaX * 5f * Time.deltaTime);
+		} else
+		{
+			meshRenderer.transform.rotation = Quaternion.Lerp (meshRenderer.transform.rotation, Quaternion.Euler (-90f, 0f, 0f), Time.deltaTime * 5f);
 		}
+		
 
 		if (currentMomentum != 0f)
 		{
@@ -230,8 +228,6 @@ public class Player : MonoBehaviour {
 		{
 			rigidBody.velocity = Vector3.zero;
 		}
-
-		transform.position = Vector3.zero;
 
 		if (playerEffects != null && playerEffects.Count > 0)
 		{

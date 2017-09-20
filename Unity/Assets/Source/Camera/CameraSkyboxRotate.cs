@@ -12,6 +12,12 @@ public class CameraSkyboxRotate : MonoBehaviour {
 		cameraTransform = transform;
 
 		gameController = GameObject.FindObjectOfType<GameController> ();
+
+		float xRot = Random.Range (0f, 360f);
+		float yRot = Random.Range (0f, 360f);
+		float zRot = Random.Range (0f, 360f);
+
+		cameraTransform.Rotate (new Vector3 (xRot, yRot, zRot));
 	}
 	
 	// Update is called once per frame
@@ -24,7 +30,7 @@ public class CameraSkyboxRotate : MonoBehaviour {
 		if (gameController != null)
 		{
 			float rot = -gameController.Player ().CurrentMomentum * 0.25f;
-			cameraTransform.Rotate (cameraTransform.right, rot * Time.deltaTime);
+			cameraTransform.Rotate (Vector3.right, rot * Time.deltaTime);
 		}
 	}
 }

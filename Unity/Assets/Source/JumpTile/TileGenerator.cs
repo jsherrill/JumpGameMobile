@@ -107,7 +107,7 @@ public class TileGenerator : MonoBehaviour {
 			isSpecialTile = true;
 		}
 
-		if (tilePosition.y > 100f)
+		//if (tilePosition.y > 100f)
 		{
 			// brick
 			if (tileType >= 10 && tileType <= 15)
@@ -119,7 +119,7 @@ public class TileGenerator : MonoBehaviour {
 			}
 		}
 
-		if (tilePosition.y > 500f)
+		//if (tilePosition.y > 500f)
 		{
 			// spike
 			if (tileType == 200)
@@ -140,7 +140,7 @@ public class TileGenerator : MonoBehaviour {
 			}
 		}
 
-		if (tilePosition.y > 1000f)
+		//if (tilePosition.y > 1000f)
 		{
 			if (tileType == 150)
 			{

@@ -18,6 +18,9 @@ public class GameController : MonoBehaviour {
 	[SerializeField]
 	Transform particleContainer = null;
 
+	[SerializeField]
+	Material[] skyboxMaterials = null;
+
 	public Player Player()
 	{
 		return player;
@@ -27,7 +30,7 @@ public class GameController : MonoBehaviour {
 	{
 		return playerMaxHeight;
 	}
-		
+
 	// Use this for initialization
 	void Start () {
 		AddMessageHandlers ();
@@ -71,7 +74,14 @@ public class GameController : MonoBehaviour {
 
 		DisableParticles ();
 
+		if (skyboxMaterials != null && skyboxMaterials.Length > 0)
+		{
+			RenderSettings.skybox = skyboxMaterials [Random.Range (0, skyboxMaterials.Length)];
+		}
+
 		StartCoroutine (GetHighScoresWWW ());
+
+		Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, "Tap to begin", MessengerMode.DONT_REQUIRE_LISTENER);
 	}
 
 	void OnDestroy() {
@@ -146,6 +156,13 @@ public class GameController : MonoBehaviour {
 
 	private IEnumerator UnpauseRoutine()
 	{
+		// if we haven't jumped yet just unpause, otherwise we'll do a quick countdown before resuming
+		if (player != null && !player.HasJumped)
+		{
+			isPaused = false;
+			yield break;
+		}
+
 		Messenger<string>.Broadcast (UIManager.MSG_SET_NOTIFICATION, "Get Ready!", MessengerMode.DONT_REQUIRE_LISTENER);
 
 		yield return new WaitForSeconds (0.5f);
@@ -226,7 +243,7 @@ public class GameController : MonoBehaviour {
 		WWWForm requestData = new WWWForm ();
 		requestData.AddField ("score", score.ToString());
 		requestData.AddField ("height", height.ToString());
-		requestData.AddField ("initials", "ZZZ");
+		requestData.AddField ("initials", "ABC");
 
 		//string dbURL = "http://10.0.0.10:1337/connect";
 		string dbURL = "http://71.229.150.150:1337/score";
@@ -411,9 +428,24 @@ public class GameController : MonoBehaviour {
 				break;
 
 			default:
-				tileCollision.Player.Rigidbody.velocity = Vector3.zero;
-				tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
-				EnableRegularParticleEffect (tileCollision.Tile.transform.position);
+				{
+					tileCollision.Player.Rigidbody.velocity = Vector3.zero;
+
+					bool setMomentum = true;
+					if (player.PlayerEffects != null && player.PlayerEffects.Count != 0)
+					{
+						if(player.PlayerEffects.Find(e => e.Type == PlayerEffect.EffectType.ROCKET_JUMP) != null)
+						{
+							setMomentum = false;
+						}
+					}
+
+					if (setMomentum)
+					{
+						tileCollision.Player.CurrentMomentum = tileCollision.Player.InitialJumpForce;
+					}
+					EnableRegularParticleEffect (tileCollision.Tile.transform.position);
+				}
 				break;
 		}
 	}
@@ -424,6 +456,15 @@ public class GameController : MonoBehaviour {
 		{
 			StartCoroutine(CheckForHighScoreWWW ());
 			//CheckForHighScore ();
+		}
+
+		if(player != null)
+		{
+			player.PlayerScore = 0;
+			playerMaxHeight = 0f;
+			player.Reset();
+			playerFallHeight = player.transform.position.y - 10f;
+			player.transform.position = playerStartPosition;
 		}
 
 		// reset the colliders in editor
@@ -444,15 +485,6 @@ public class GameController : MonoBehaviour {
 			{
 				tile.gameObject.SetActive(true);
 			}
-		}
-
-		if(player != null)
-		{
-			player.PlayerScore = 0;
-			playerMaxHeight = 0f;
-			player.Reset();
-			playerFallHeight = player.transform.position.y - 10f;
-			player.transform.position = playerStartPosition;
 		}
 
 		if(tileGenerator != null)
